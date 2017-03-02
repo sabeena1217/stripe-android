@@ -1,13 +1,17 @@
 package com.stripe.example.activity;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.widget.Button;
 import android.widget.ListView;
 
+import com.jakewharton.rxbinding.view.RxView;
 import com.stripe.android.view.CardInputWidget;
 import com.stripe.example.R;
 import com.stripe.example.module.DependencyHandler;
+
+import rx.functions.Action1;
 
 public class PaymentActivity extends AppCompatActivity {
 
@@ -22,6 +26,14 @@ public class PaymentActivity extends AppCompatActivity {
                 this,
                 (CardInputWidget) findViewById(R.id.card_input_widget),
                 (ListView) findViewById(R.id.listview));
+
+        RxView.clicks(findViewById(R.id.design)).subscribe(new Action1<Void>() {
+            @Override
+            public void call(Void aVoid) {
+                Intent intent = new Intent(PaymentActivity.this, DesignActivity.class);
+                startActivity(intent);
+            }
+        });
 
         Button saveButton = (Button) findViewById(R.id.save);
         mDependencyHandler.attachAsyncTaskTokenController(saveButton);
