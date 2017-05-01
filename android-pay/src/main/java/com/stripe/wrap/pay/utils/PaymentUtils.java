@@ -12,7 +12,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import com.google.android.gms.wallet.Cart;
+import com.google.android.gms.wallet.IsReadyToPayRequest;
 import com.google.android.gms.wallet.LineItem;
+import com.google.android.gms.wallet.WalletConstants;
 
 /**
  * Utility class for easily generating Android Pay items.
@@ -299,4 +301,15 @@ public class PaymentUtils {
 
         return decimalFormat.format(decimalPrice);
     }
+
+    public static IsReadyToPayRequest getStripeIsReadyToPayRequest() {
+        return IsReadyToPayRequest.newBuilder()
+                .addAllowedCardNetwork(WalletConstants.CardNetwork.AMEX)
+                .addAllowedCardNetwork(WalletConstants.CardNetwork.DISCOVER)
+                .addAllowedCardNetwork(WalletConstants.CardNetwork.JCB)
+                .addAllowedCardNetwork(WalletConstants.CardNetwork.MASTERCARD)
+                .addAllowedCardNetwork(WalletConstants.CardNetwork.VISA)
+                .build();
+    }
 }
+
