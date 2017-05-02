@@ -11,6 +11,7 @@
     <string name="progressMessage">Creating Token&#8230;</string>
     <string name="validationErrors">Validation Errors</string>
 
+    <string name="createAndroidPayCharge">Create Android Pay Charge</string>
     <string name="createCardTokens">Create Card Tokens</string>
     <string name="createThreeDSecure">Create 3DS Sources</string>
     <string name="cardNumber">Card Number</string>

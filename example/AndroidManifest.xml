@@ -10,8 +10,20 @@
         android:icon="@drawable/ic_launcher"
         android:label="@string/appName">
 
+        <meta-data
+            android:name="com.google.android.gms.wallet.api.enabled"
+            android:value="true" />
+
         <activity
             android:name=".activity.PaymentActivity"
+            android:theme="@style/SampleTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+            </intent-filter>
+        </activity>
+
+        <activity
+            android:name=".activity.CheckoutWithAndroidPayActivity"
             android:theme="@style/SampleTheme">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW"/>
