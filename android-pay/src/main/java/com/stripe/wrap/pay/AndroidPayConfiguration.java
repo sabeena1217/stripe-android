@@ -63,6 +63,7 @@ public class AndroidPayConfiguration {
                 mCurrencyCode);
     }
 
+
     @Nullable
     public MaskedWalletRequest generateMaskedWalletRequest(
             @Nullable Cart cart,
@@ -87,6 +88,15 @@ public class AndroidPayConfiguration {
                 .setCurrencyCode(currencyCode)
                 .setEstimatedTotalPrice(cart.getTotalPrice())
                 .setPaymentMethodTokenizationParameters(paymentMethodTokenizationParameters)
+                .build();
+    }
+
+    public static FullWalletRequest generateFullWalletRequest(
+            @NonNull String googleTransactionId,
+            @NonNull Cart cart) {
+        return FullWalletRequest.newBuilder()
+                .setGoogleTransactionId(googleTransactionId)
+                .setCart(cart)
                 .build();
     }
 

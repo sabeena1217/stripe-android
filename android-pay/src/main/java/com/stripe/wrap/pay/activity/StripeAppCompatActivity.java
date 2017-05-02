@@ -10,6 +10,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.app.DialogFragment;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -17,6 +18,8 @@ import com.google.android.gms.common.api.BooleanResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.wallet.Cart;
+import com.google.android.gms.wallet.FullWallet;
+import com.google.android.gms.wallet.FullWalletRequest;
 import com.google.android.gms.wallet.IsReadyToPayRequest;
 import com.google.android.gms.wallet.MaskedWallet;
 import com.google.android.gms.wallet.MaskedWalletRequest;
@@ -27,18 +30,29 @@ import com.google.android.gms.wallet.fragment.WalletFragmentInitParams;
 import com.google.android.gms.wallet.fragment.WalletFragmentMode;
 import com.google.android.gms.wallet.fragment.WalletFragmentOptions;
 import com.google.android.gms.wallet.fragment.WalletFragmentStyle;
+import com.stripe.android.model.Source;
+import com.stripe.android.model.Token;
+import com.stripe.android.net.TokenParser;
 import com.stripe.wrap.pay.AndroidPayConfiguration;
 import com.stripe.wrap.pay.utils.PaymentUtils;
+
+import org.json.JSONException;
+
+import java.util.Locale;
 
 public abstract class StripeAppCompatActivity extends AppCompatActivity
         implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener {
+
+    public static final String TAG = StripeAppCompatActivity.class.getName();
 
     public static final String EXTRA_ACCOUNT_NAME = "extra_account_name";
     public static final String EXTRA_CART = "extra_cart";
 
     // Request code to use when creating the Masked Wallet.
     public static final int REQUEST_CODE_MASKED_WALLET = 2002;
+
+    public static final int REQUEST_CODE_RESOLVE_LOAD_FULL_WALLET = 3003;
 
     // Request code to use when launching the resolution activity
     private static final int REQUEST_RESOLVE_ERROR = 1001;
@@ -114,12 +128,10 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
                         if (data != null) {
                             MaskedWallet maskedWallet =
                                     data.getParcelableExtra(WalletConstants.EXTRA_MASKED_WALLET);
-
-                            // call to get the Google transaction id
-                            mGoogleTransactionId = maskedWallet.getGoogleTransactionId();
-                            // TODO: Make the full wallet request.
-                            // Using the masked wallet, we can now update the cart with accurate
-                            // shipping payment information and make a full wallet request.
+                            if (maskedWallet != null) {
+                                mGoogleTransactionId = maskedWallet.getGoogleTransactionId();
+                            }
+                            onMaskedWalletRetrieved(maskedWallet);
                         }
                         break;
                     case RESULT_CANCELED:
@@ -129,11 +141,27 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
                         break;
                 }
                 break;
-
+            case REQUEST_CODE_RESOLVE_LOAD_FULL_WALLET:
+                switch (resultCode) {
+                    case RESULT_OK:
+                        if (data != null && data.hasExtra(WalletConstants.EXTRA_FULL_WALLET)) {
+                            FullWallet fullWallet =
+                                    data.getParcelableExtra(WalletConstants.EXTRA_FULL_WALLET);
+                            // the full wallet can now be used to process the customer's payment
+                            // send the wallet info up to server to process, and to get the result
+                            // for sending a transaction status
+                            onFullWalletRetrieved(fullWallet);
+                        }
+                        break;
+                    case RESULT_CANCELED:
+                        break;
+                    default:
+                        handleError(errorCode);
+                        break;
+                }
             case WalletConstants.RESULT_ERROR:
                 handleError(errorCode);
                 break;
-
             default:
                 super.onActivityResult(requestCode, resultCode, data);
                 break;
@@ -162,6 +190,13 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
                                 }
                             }
                         });
+    }
+
+    protected void makeFullWalletRequest(@NonNull FullWalletRequest fullWalletRequest) {
+        Wallet.Payments.loadFullWallet(
+                mGoogleApiClient,
+                fullWalletRequest,
+                REQUEST_CODE_RESOLVE_LOAD_FULL_WALLET);
     }
 
     /**
@@ -223,6 +258,39 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
 
         mSupportWalletFragment.initialize(startParamsBuilder.build());
         addWalletFragment(mSupportWalletFragment);
+    }
+
+    protected void onFullWalletRetrieved(FullWallet fullWallet) {
+        if (fullWallet == null || fullWallet.getPaymentMethodToken() == null) {
+            return;
+        }
+
+        String rawPurchaseToken = fullWallet.getPaymentMethodToken().getToken();
+        if (rawPurchaseToken == null) {
+            Log.w(TAG, "Null token returned with full wallet");
+        }
+
+        try {
+            Token token = TokenParser.parseToken(rawPurchaseToken);
+            onTokenReturned(fullWallet, token);
+        } catch (JSONException jsonException) {
+            Log.w(TAG,
+                    String.format(Locale.ENGLISH,
+                            "Could not parse object as Stripe token. Trying as Source.\n%s",
+                            rawPurchaseToken),
+                    jsonException);
+            Source source = Source.fromString(rawPurchaseToken);
+
+            if (source == null) {
+                Log.w(TAG,
+                        String.format(Locale.ENGLISH,
+                                "Could not parse object as Stripe Source\n%s",
+                                rawPurchaseToken),
+                        jsonException);
+                return;
+            }
+            onSourceReturned(fullWallet, source);
+        }
     }
 
     protected void handleError(int errorCode) {
@@ -294,6 +362,7 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
     protected abstract void addWalletFragment(@NonNull SupportWalletFragment walletFragment);
     protected abstract void onAndroidPayAvailable();
     protected abstract void onAndroidPayNotAvailable();
+    protected abstract void onMaskedWalletRetrieved(@Nullable MaskedWallet maskedWallet);
 
     /*------ Optional Overrides ------*/
 
@@ -313,6 +382,27 @@ public abstract class StripeAppCompatActivity extends AppCompatActivity
     protected int getWalletTheme() {
         return WalletConstants.THEME_LIGHT;
     }
+
+    /**
+     * Called when a Stripe {@link Source} is returned from Google's servers.
+     * Send the token in this method to your server to make a charge.
+     *
+     * Note: this feature is not yet implemented, but to be future-proof, a returned
+     * {@link Source} should still be handled.
+     *
+     * @param wallet the final {@link FullWallet} object
+     * @param source a Stripe {@link Source} that can be used to make a charge
+     */
+    protected void onSourceReturned(FullWallet wallet, Source source) { }
+
+    /**
+     * Called when a Stripe {@link Token} is returned from Google's servers.
+     * Send the token in this method to your server to make a charge.
+     *
+     * @param wallet the final {@link FullWallet} object
+     * @param token a Stripe {@link Token} that can be used to make a charge
+     */
+    protected void onTokenReturned(FullWallet wallet, Token token) { }
 
     /*------ End Overrides ------*/
 

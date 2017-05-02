@@ -2,11 +2,14 @@ package com.stripe.wrap.pay.testharness;
 
 import android.content.Intent;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.BooleanResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.wallet.FullWallet;
 import com.google.android.gms.wallet.IsReadyToPayRequest;
+import com.google.android.gms.wallet.MaskedWallet;
 import com.google.android.gms.wallet.fragment.SupportWalletFragment;
 import com.stripe.wrap.pay.activity.StripeAppCompatActivity;
 
@@ -95,6 +98,16 @@ public class StripeAndroidPayTestActivity extends StripeAppCompatActivity {
         if (mListener != null) {
             mListener.onAndroidPayNotAvailable();
         }
+    }
+
+    @Override
+    protected void onMaskedWalletRetrieved(@Nullable MaskedWallet maskedWallet) {
+
+    }
+
+    @Override
+    protected void onFullWalletRetrieved(@NonNull FullWallet fullWallet) {
+
     }
 
     @Override

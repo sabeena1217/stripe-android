@@ -41,6 +41,16 @@ public class CartManager {
         mCurrency = PaymentUtils.getCurrencyByCodeOrDefault(currencyCode);
     }
 
+    public CartManager(@NonNull Cart oldCart) {
+        mCurrency = PaymentUtils.getCurrencyByCodeOrDefault(oldCart.getCurrencyCode());
+        List<LineItem> lineItems = oldCart.getLineItems();
+        for (LineItem item : lineItems) {
+            if (item.getRole() == LineItem.Role.REGULAR) {
+                addLineItem(item);
+            }
+        }
+    }
+
     /**
      * Adds a {@link LineItem.Role#REGULAR} item to the cart with a description
      * and total price value. Currency matches the currency of the {@link CartManager}.

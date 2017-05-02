@@ -46,8 +46,6 @@ public class LauncherActivity extends AppCompatActivity {
         androidPayConfiguration.setPublicApiKey(FUNCTIONAL_SOURCE_PUBLISHABLE_KEY);
         androidPayConfiguration.setShippingAddressRequired(true);
 
-
-
         androidPayButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

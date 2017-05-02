@@ -33,7 +33,7 @@ public class ListViewController {
         listView.setAdapter(mAdatper);
     }
 
-    void addToList(Token token) {
+    public void addToList(Token token) {
         addToList(token.getCard().getLast4(), token.getId());
     }
 
